@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hall Effect Simulator</title>
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--ink:#1c2433;--muted:#5b6578;--line:#dde3ee;--brand:#2b59c3}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:linear-gradient(120deg,#16295e,#2b59c3);color:#fff;padding:14px 20px}
+header h1{margin:0;font-size:20px}
+header p{margin:3px 0 0;font-size:13px;opacity:.85}
+nav{display:flex;gap:4px;flex-wrap:wrap;padding:10px 16px 0;background:#e9edf7;border-bottom:1px solid var(--line)}
+nav button{border:1px solid var(--line);border-bottom:none;background:#f7f9fe;padding:9px 14px;border-radius:9px 9px 0 0;cursor:pointer;font:inherit;font-size:14px;color:var(--muted)}
+nav button.active{background:#fff;color:var(--brand);font-weight:600}
+main{padding:14px 16px;max-width:1280px;margin:0 auto}
+.tab{display:none}.tab.active{display:block}
+.layout{display:grid;grid-template-columns:330px 1fr;gap:14px;align-items:start}
+@media(max-width:900px){.layout{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(20,30,60,.05)}
+.card h3{margin:0 0 10px;font-size:15px}
+select,input[type=number],textarea,input[type=text]{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff}
+.lbl{display:block;font-size:13px;color:var(--muted);margin:2px 0 4px}
+.sl{margin:11px 0}
+.slh{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+.slh b{color:var(--ink)}
+input[type=range]{width:100%}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+button.b{padding:8px 10px;border:1px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;font:inherit;font-size:13px}
+button.b:hover{background:#eef3ff}
+button.pri{background:var(--brand);color:#fff;border-color:var(--brand)}
+button.pri:hover{background:#244aa5}
+canvas{display:block;width:100%;height:auto;border-radius:8px}
+.status{font-size:13px;color:var(--muted);padding:8px 4px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.kv{background:#f6f8fd;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.kv span{display:block;font-size:12px;color:var(--muted)}
+.kv b{font-size:14px}
+.note{font-size:13px;color:var(--muted);margin:8px 0}
+.polar{margin-top:10px;padding:9px 12px;border-radius:8px;background:#fff8e6;border:1px solid #f2d98a;font-size:14px}
+.calc p{margin:6px 0;font-size:14px;line-height:1.75}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-bottom:12px}
+.tblwrap{overflow:auto}
+table.tbl{border-collapse:collapse;width:100%;font-size:13px}
+.tbl th,.tbl td{border:1px solid #cfd6e4;padding:5px 7px;text-align:center}
+.tbl th{background:#eaf0fb}
+.formula{background:#f3f6fd;border-left:4px solid var(--brand);padding:8px 12px;margin:8px 0;font-size:16px;font-family:Cambria,"Times New Roman",serif}
+.doc h2{font-size:18px;margin:20px 0 6px;color:#16295e;border-bottom:2px solid #dbe4f7;padding-bottom:3px}
+.doc p,.doc li{line-height:1.65;font-size:14.5px}
+.report{background:#fff;padding:28px 34px;max-width:900px;margin:0 auto;border:1px solid var(--line)}
+.report .title{text-align:center}
+.report .title h1{font-size:22px;margin:4px 0}
+.report .title div{color:#444}
+.report img{max-width:100%;border:1px solid #ddd;margin:6px 0}
+.report figure{margin:10px 0;text-align:center}
+.report figcaption{font-size:13px;color:#444}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#16295e;color:#fff;padding:9px 16px;border-radius:20px;opacity:0;transition:.3s;pointer-events:none;z-index:9;font-size:14px}
+.toast.show{opacity:1}
+.sub{background:#f6f8fd;border:1px dashed var(--line);border-radius:8px;padding:8px;margin-top:8px}
+@media print{
+ header,nav,.no-print,.toast{display:none!important}
+ .tab{display:none!important}
+ #tab-report{display:block!important}
+ body{background:#fff}
+ main{padding:0}
+ .report{border:0;padding:0;max-width:none}
+ .report h2{break-after:avoid}
+ .report table,.report figure,.report img{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<header>
+ <h1>Hall Effect Simulator &mdash; Metals vs n-type &amp; p-type Semiconductors</h1>
+ <p>FOET, DSMNRU, Lucknow &middot; Physics assignment &middot; interactive simulation with real formulas</p>
+</header>
+<nav id="nav">
+ <button data-tab="sim" class="active">Simulator</button>
+ <button data-tab="compare">Compare Materials</button>
+ <button data-tab="graphs">Graphs</button>
+ <button data-tab="obs">Observation Table</button>
+ <button data-tab="theory">Theory &amp; Procedure</button>
+ <button data-tab="report">Report (Print / PDF)</button>
+</nav>
+<main>
+
+<section class="tab active" id="tab-sim">
+ <div class="layout">
+  <aside class="card" id="controls"></aside>
+  <div>
+   <div class="card">
+    <canvas id="sim"></canvas>
+    <div class="status" id="status"></div>
+   </div>
+   <div class="card">
+    <h3>Live readings</h3>
+    <div id="readouts" class="grid"></div>
+    <div id="polarity" class="polar"></div>
+   </div>
+   <div class="card">
+    <h3>Live calculation (formulas with your current values)</h3>
+    <div class="calc" id="calc"></div>
+   </div>
+  </div>
+ </div>
+</section>
+
+<section class="tab" id="tab-compare">
+ <div class="card">
+  <h3>Comparison of all materials (same I, B and t)</h3>
+  <div id="cmpTable"></div>
+  <div class="polar" id="cmpInsight"></div>
+ </div>
+ <div class="card"><canvas id="barRH"></canvas></div>
+ <div class="card"><canvas id="barVH"></canvas></div>
+</section>
+
+<section class="tab" id="tab-graphs">
+ <div class="card">
+  <div class="row">
+   <label>X-axis<select id="gX"><option value="B">Magnetic field B</option><option value="I">Current I</option><option value="t">Specimen thickness t</option></select></label>
+   <label>Materials<select id="gSet"><option value="sel">Selected material (from simulator)</option><option value="all" selected>All materials</option><option value="metals">Metals only</option><option value="semis">Semiconductors only</option></select></label>
+   <label>Y-scale<select id="gY"><option value="auto">Auto</option><option value="lin">Linear</option><option value="log">Symmetric log</option></select></label>
+  </div>
+  <canvas id="graph"></canvas>
+  <p class="note">Other quantities are held at the current simulator values (a zero value is replaced by I = 10 mA or B = 1 T). Dashed lines = positive carriers (holes). On the symmetric-log scale, metals (nV&ndash;&micro;V) and semiconductors (mV&ndash;V) can be seen together.</p>
+ </div>
+</section>
+
+<section class="tab" id="tab-obs">
+ <div class="card">
+  <h3>Observation table</h3>
+  <div class="btnrow">
+   <button class="b pri" id="oRec">Record current reading</button>
+   <button class="b" id="oSweep">Sweep B (0.2 &ndash; 1.0 T) for selected material</button>
+   <button class="b" id="oAll">Record all materials</button>
+   <button class="b" id="oUndo">Delete last row</button>
+   <button class="b" id="oClear">Clear table</button>
+   <button class="b" id="oCsv">Download CSV</button>
+  </div>
+  <label><input type="checkbox" id="noise"> Add realistic measurement noise (&plusmn;1 %) so the readings look like an experiment</label>
+  <div class="tblwrap" id="obsTable" style="margin-top:10px"></div>
+  <p class="note">R<sub>H</sub> = V<sub>H</sub>&middot;t / (I&middot;B) is calculated from the measured V<sub>H</sub>; its sign tells the carrier type and 1/(|R<sub>H</sub>|e) gives the carrier concentration.</p>
+ </div>
+</section>
+
+<section class="tab" id="tab-theory">
+ <div class="card doc" id="theoryDoc"></div>
+</section>
+
+<section class="tab" id="tab-report">
+ <div class="card no-print">
+  <h3>Group details (printed on the report)</h3>
+  <textarea id="rMembers" rows="4" placeholder="Name - Enrollment No. (one per line)&#10;e.g. Rahul Kumar - DSMNRU2600046041"></textarea>
+  <div class="btnrow">
+   <button class="b pri" id="rRefresh">Refresh report</button>
+   <button class="b" id="rPrint">Print / Save as PDF</button>
+   <button class="b" id="rClearShots">Remove captured screenshots</button>
+  </div>
+  <p class="note">Tip: first record observations (Observation tab) and capture screenshots (Simulator tab: "Screenshot" or "Auto-capture 3 materials"), then press Refresh. In the print dialog choose "Save as PDF".</p>
+ </div>
+ <div class="report" id="reportBody"></div>
+</section>
+
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+/* ================= constants & helpers ================= */
+const E=1.602176634e-19;
+const $=id=>document.getElementById(id);
+const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const PFX={'-12':'p','-9':'n','-6':'\u00b5','-3':'m','0':'','3':'k','6':'M'};
+function eng(x,unit,d){d=d||3;if(!isFinite(x)||x===0)return '0 '+unit;let ex=Math.floor(Math.log10(Math.abs(x))/3)*3;ex=clamp(ex,-12,6);const v=x/Math.pow(10,ex);return Number(v.toPrecision(d))+' '+PFX[ex]+unit;}
+function sgnEng(x,unit,d){if(x===0)return '0 '+unit;return (x<0?'\u2212':'+')+eng(Math.abs(x),unit,d);}
+function sciH(x,d){d=d||3;if(x===0)return '0';const s=x.toExponential(d-1).split('e');return s[0]+' \u00d7 10<sup>'+parseInt(s[1],10)+'</sup>';}
+function num(x){if(x===0)return '0';const a=Math.abs(x);if(a>=0.01&&a<10000)return String(Number(x.toPrecision(3)));return sciH(x);}
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),2300);}
+
+/* ================= materials ================= */
+const MATS=[
+ {id:'cu',name:'Copper (Cu)',short:'Cu',kind:'Metal',n:8.49e28,mu:4.4e-3,sign:-1,col:'#c9803a',body:'#e8c4a0'},
+ {id:'ag',name:'Silver (Ag)',short:'Ag',kind:'Metal',n:5.86e28,mu:6.7e-3,sign:-1,col:'#6c7a89',body:'#dfe3e8'},
+ {id:'au',name:'Gold (Au)',short:'Au',kind:'Metal',n:5.90e28,mu:4.3e-3,sign:-1,col:'#d4a017',body:'#f0dc9a'},
+ {id:'al',name:'Aluminium (Al)',short:'Al',kind:'Metal',n:18.1e28,mu:1.3e-3,sign:-1,col:'#1f3a5f',body:'#cfd6de'},
+ {id:'zn',name:'Zinc (Zn) - anomalous, +ve R_H',short:'Zn (anom.)',kind:'Metal',n:9.8e28,mu:1.1e-3,sign:1,col:'#8e44ad',body:'#d5c6e6'},
+ {id:'sin',name:'Silicon n-type (Si:P)',short:'Si (n)',kind:'Semiconductor',n:1e21,mu:0.135,sign:-1,col:'#2563eb',body:'#cbdcf7'},
+ {id:'sip',name:'Silicon p-type (Si:B)',short:'Si (p)',kind:'Semiconductor',n:1e21,mu:0.048,sign:1,col:'#dc2626',body:'#f6cfcf'},
+ {id:'gen',name:'Germanium n-type (Ge:As)',short:'Ge (n)',kind:'Semiconductor',n:1e21,mu:0.39,sign:-1,col:'#0891b2',body:'#c6ecf2'},
+ {id:'gep',name:'Germanium p-type (Ge:Ga)',short:'Ge (p)',kind:'Semiconductor',n:1e21,mu:0.19,sign:1,col:'#ea580c',body:'#f9d8bd'},
+ {id:'insb',name:'Indium antimonide n-type (InSb)',short:'InSb (n)',kind:'Semiconductor',n:2e22,mu:7.7,sign:-1,col:'#16a34a',body:'#cdeed8'},
+ {id:'gaas',name:'Gallium arsenide n-type (GaAs)',short:'GaAs (n)',kind:'Semiconductor',n:1e21,mu:0.85,sign:-1,col:'#db2777',body:'#f6cde0'},
+ {id:'custom',name:'Custom material...',short:'Custom',kind:'Custom',custom:true}
+];
+const ALL=MATS.filter(m=>!m.custom);
+const S={mat:5,I:5,B:0.5,t:0.5,L:10,w:5,nExp:0,anim:1,custom:{type:'n',exp:21,mu:0.1}};
+const DEF=JSON.parse(JSON.stringify(S));
+let paused=false;
+
+function props(m,useMul){
+ if(m.custom){const c=S.custom;return {n:Math.pow(10,c.exp),mu:c.mu,sign:c.type==='p'?1:-1,name:'Custom '+(c.type==='p'?'p-type':'n-type'),short:'Custom',kind:'Custom',col:'#555',body:'#e5e7eb'};}
+ return {n:m.n*(useMul?Math.pow(10,S.nExp):1),mu:m.mu,sign:m.sign,name:m.name.replace('R_H','R\u2095'),short:m.short,kind:m.kind,col:m.col,body:m.body};
+}
+function calc(p,Ima,B,tmm,Lmm,wmm){
+ const I=Ima*1e-3,t=tmm*1e-3,L=Lmm*1e-3,w=wmm*1e-3,A=w*t;
+ const RH=p.sign/(p.n*E),VH=RH*I*B/t;
+ const sigma=p.n*E*p.mu,rho=1/sigma,R=rho*L/A;
+ const vd=Math.abs(I)/(p.n*E*A);
+ return {I:I,B:B,t:t,L:L,w:w,A:A,RH:RH,VH:VH,sigma:sigma,rho:rho,R:R,Vdrop:I*R,vd:vd,EH:VH/w,FB:E*vd*Math.abs(B),tanT:p.mu*Math.abs(B),J:I/A,muH:Math.abs(RH)*sigma,P:I*I*R};
+}
+let curM,curP,cur;
+function refresh(){curM=MATS[S.mat];curP=props(curM,true);cur=calc(curP,S.I,S.B,S.t,S.L,S.w);}
+
+/* ================= controls ================= */
+const SL=[
+ {k:'I',label:'Current I',min:-100,max:100,step:1,val:5},
+ {k:'B',label:'Magnetic field B',min:-2,max:2,step:0.05,val:0.5},
+ {k:'t',label:'Specimen thickness t',min:0.05,max:2,step:0.05,val:0.5},
+ {k:'L',label:'Length L',min:5,max:20,step:1,val:10},
+ {k:'w',label:'Width w',min:2,max:10,step:0.5,val:5},
+ {k:'nExp',label:'Carrier concentration (x n)',min:-1,max:1,step:0.05,val:0},
+ {k:'anim',label:'Animation speed',min:0.2,max:2,step:0.1,val:1}
+];
+function slText(k){
+ switch(k){
+  case 'I':return (S.I>0?'+':S.I<0?'\u2212':'')+Math.abs(S.I)+' mA '+(S.I>0?'(\u2192)':S.I<0?'(\u2190)':'');
+  case 'B':return (S.B>0?'+':S.B<0?'\u2212':'')+Math.abs(S.B).toFixed(2)+' T '+(S.B>0?'(\u2299 out)':S.B<0?'(\u2297 in)':'');
+  case 't':return S.t.toFixed(2)+' mm';
+  case 'L':return S.L+' mm';
+  case 'w':return S.w.toFixed(1)+' mm';
+  case 'nExp':return '\u00d7'+Math.pow(10,S.nExp).toFixed(2);
+  case 'anim':return S.anim.toFixed(1)+'\u00d7';
+ }
+}
+function buildControls(){
+ let h='<h3>Controls</h3><label class="lbl">Material</label><select id="mat"></select>';
+ h+='<div class="sub" id="customBox" hidden><label class="lbl">Carrier type</label><select id="cType"><option value="n">n-type (electrons)</option><option value="p">p-type (holes)</option></select>';
+ h+='<div class="slh" style="margin-top:8px"><span>log<sub>10</sub> n (m<sup>-3</sup>)</span><b id="v_cExp"></b></div><input type="range" id="cExp" min="17" max="29" step="0.1" value="21">';
+ h+='<label class="lbl" style="margin-top:8px">Mobility &mu; (m&sup2;/V&middot;s)</label><input type="number" id="cMu" min="0.0001" step="0.001" value="0.1"></div>';
+ SL.forEach(s=>{h+='<div class="sl"><div class="slh"><span>'+s.label+'</span><b id="v_'+s.k+'"></b></div><input type="range" id="r_'+s.k+'" min="'+s.min+'" max="'+s.max+'" step="'+s.step+'" value="'+s.val+'"></div>';});
+ h+='<div class="btns">'
+  +'<button class="b" id="bPause">\u23f8 Pause</button><button class="b" id="bRestart">\u21bb Restart build-up</button>'
+  +'<button class="b" id="bRevI">\u21c4 Reverse I</button><button class="b" id="bRevB">\u21c4 Reverse B</button>'
+  +'<button class="b pri" id="bRec">\u2795 Record reading</button><button class="b" id="bReset">\u27f2 Reset all</button>'
+  +'<button class="b" id="bShot">\ud83d\udcf8 Screenshot</button><button class="b" id="bShots">\ud83d\udcf8 Auto-capture 3 materials</button></div>'
+  +'<p class="note">Screenshots are added to the Report tab. Hall voltage does not depend on L or w &mdash; try changing them!</p>';
+ $('controls').innerHTML=h;
+ const sel=$('mat');let grp=null,lastKind='';
+ MATS.forEach((m,i)=>{
+  const k=m.kind==='Metal'?'Metals':m.kind==='Semiconductor'?'Semiconductors':'Other';
+  if(k!==lastKind){grp=document.createElement('optgroup');grp.label=k;sel.appendChild(grp);lastKind=k;}
+  const o=document.createElement('option');o.value=i;o.textContent=m.name.replace('R_H','R_H');grp.appendChild(o);
+ });
+ sel.value=S.mat;
+ sel.addEventListener('change',()=>{S.mat=parseInt(sel.value,10);$('customBox').hidden=!MATS[S.mat].custom;onChange();});
+ SL.forEach(s=>{$('r_'+s.k).addEventListener('input',e=>{S[s.k]=parseFloat(e.target.value);onChange();});});
+ $('cType').addEventListener('change',e=>{S.custom.type=e.target.value;onChange();});
+ $('cExp').addEventListener('input',e=>{S.custom.exp=parseFloat(e.target.value);onChange();});
+ $('cMu').addEventListener('input',e=>{const v=parseFloat(e.target.value);if(v>0){S.custom.mu=v;onChange();}});
+ $('bPause').addEventListener('click',()=>{paused=!paused;$('bPause').textContent=paused?'\u25b6 Play':'\u23f8 Pause';});
+ $('bRestart').addEventListener('click',()=>{h=0;});
+ $('bRevI').addEventListener('click',()=>{setSlider('I',-S.I);});
+ $('bRevB').addEventListener('click',()=>{setSlider('B',-S.B);});
+ $('bReset').addEventListener('click',()=>{SL.forEach(s=>setSlider(s.k,DEF[s.k]));S.mat=DEF.mat;$('mat').value=S.mat;$('customBox').hidden=true;h=0;});
+ $('bRec').addEventListener('click',()=>{if(addObs(curP,S.I,S.B,S.t))toast('Reading recorded (row '+OBS.length+')');});
+ $('bShot').addEventListener('click',()=>snap('Simulator: '+curP.name+', I = '+S.I+' mA, B = '+S.B+' T, t = '+S.t+' mm'));
+ $('bShots').addEventListener('click',autoShots);
+}
+function setSlider(k,v){S[k]=v;$('r_'+k).value=v;onChange();}
+function updateLabels(){SL.forEach(s=>{$('v_'+s.k).textContent=slText(s.k);});$('v_cExp').textContent='10^'+S.custom.exp.toFixed(1);}
+function onChange(){refresh();updateLabels();renderReadouts();}
+
+/* ================= readouts ================= */
+function renderReadouts(){
+ const c=cur,p=curP;
+ const items=[
+  ['Material',p.name],
+  ['Carrier type',p.sign>0?'Holes (p-type) \u2013 positive':'Electrons (n-type) \u2013 negative'],
+  ['Concentration n',sciH(p.n)+' m<sup>-3</sup>'],
+  ['Mobility \u03bc',sciH(p.mu,2)+' m\u00b2/V\u00b7s'],
+  ['Hall coefficient R<sub>H</sub>',(p.sign>0?'+':'\u2212')+sciH(Math.abs(c.RH))+' m\u00b3/C'],
+  ['Hall voltage V<sub>H</sub>',sgnEng(c.VH,'V')],
+  ['Hall field E<sub>H</sub>',eng(Math.abs(c.EH),'V/m')],
+  ['Drift velocity v<sub>d</sub>',eng(c.vd,'m/s')],
+  ['Force F<sub>B</sub> = F<sub>E</sub>',sciH(c.FB)+' N'],
+  ['Conductivity \u03c3',sciH(c.sigma)+' S/m'],
+  ['Bar resistance R',eng(c.R,'\u03a9')],
+  ['Ohmic drop I\u00b7R (along bar)',sgnEng(c.Vdrop,'V')],
+  ['Hall angle \u03b8<sub>H</sub> (tan\u03b8 = \u03bcB)',(Math.atan(c.tanT)*180/Math.PI).toFixed(3)+'\u00b0']
+ ];
+ $('readouts').innerHTML=items.map(i=>'<div class="kv"><span>'+i[0]+'</span><b>'+i[1]+'</b></div>').join('');
+ $('polarity').innerHTML=c.VH===0?'No Hall voltage because I or B is zero.':'<b>Polarity:</b> the bottom edge is '+(c.VH>0?'<b>positive (+)</b>':'<b>negative (\u2212)</b>')+' with respect to the top edge. V<sub>H</sub> is defined as V(bottom) \u2212 V(top), so its sign is the sign of R<sub>H</sub>&middot;I&middot;B.';
+ const I=c.I,t=c.t;
+ $('calc').innerHTML=
+  '<p>R<sub>H</sub> = '+(p.sign>0?'+':'\u2212')+'1 / (n&middot;e) = 1 / ('+sciH(p.n)+' \u00d7 1.602\u00d710<sup>-19</sup>) = <b>'+(p.sign>0?'+':'\u2212')+sciH(Math.abs(c.RH))+' m\u00b3/C</b></p>'
+  +'<p>V<sub>H</sub> = R<sub>H</sub>&middot;I&middot;B / t = ('+sciH(c.RH)+' \u00d7 '+num(I)+' A \u00d7 '+num(S.B)+' T) / '+num(t)+' m = <b>'+sgnEng(c.VH,'V')+'</b></p>'
+  +'<p>Equilibrium check: F<sub>B</sub> = e&middot;v<sub>d</sub>&middot;B = e&middot;E<sub>H</sub> &rArr; E<sub>H</sub> = v<sub>d</sub>B = ('+eng(c.vd,'m/s')+') \u00d7 '+num(Math.abs(S.B))+' T = '+eng(Math.abs(c.vd*S.B),'V/m')+' &nbsp; and V<sub>H</sub> = E<sub>H</sub>&middot;w = '+eng(Math.abs(c.vd*S.B*c.w),'V')+' \u2713</p>'
+  +'<p>v<sub>d</sub> = I / (n&middot;e&middot;w&middot;t) = '+eng(c.vd,'m/s')+' &nbsp;|&nbsp; \u03c3 = n&middot;e&middot;\u03bc = '+sciH(c.sigma)+' S/m &nbsp;|&nbsp; R = \u03c1L/(wt) = '+eng(c.R,'\u03a9')+'</p>';
+}
+
+/* ================= simulation (canvas) ================= */
+const cv=$('sim'),ctx=cv.getContext('2d');
+const W=980,H=470;let sx=1,h=0,lastKey='';
+const NP=72,pts=[];
+for(let i=0;i<NP;i++)pts.push({x:Math.random(),y:Math.random(),v:0.7+0.6*Math.random()});
+function resizeSim(){const w=cv.parentElement.clientWidth-28;if(w<=0)return;const dpr=window.devicePixelRatio||1;cv.width=Math.round(w*dpr);cv.height=Math.round(w*H/W*dpr);cv.style.width=w+'px';cv.style.height=(w*H/W)+'px';sx=cv.width/W;}
+function update(dt){
+ dt*=S.anim;const p=curP;
+ const Ifrac=Math.abs(S.I)/100,Bfrac=Math.abs(S.B)/2;
+ const dirI=Math.sign(S.I),defl=(Math.sign(S.I)*Math.sign(S.B)>0)?1:-1;
+ const key=S.mat+'|'+defl+'|'+dirI+'|'+Math.sign(S.B)+'|'+p.sign;
+ if(key!==lastKey){h=0;lastKey=key;}
+ const active=S.I!==0&&S.B!==0;
+ h=active?h+(1-h)*(1-Math.exp(-dt/0.9)):h*Math.exp(-dt/0.3);
+ const cdir=dirI*(p.sign>0?1:-1);
+ const speed=Ifrac>0?(0.06+0.35*Ifrac):0;
+ const vy=defl*(1-h)*Bfrac*0.7*(0.4+0.6*Ifrac);
+ const jit=Math.sqrt(dt)*0.3;
+ pts.forEach(q=>{
+  q.x+=cdir*speed*q.v*dt+(Math.random()-0.5)*jit*0.05;
+  q.y+=vy*dt*q.v+(Math.random()-0.5)*jit*0.25;
+  if(q.x>1)q.x-=1;if(q.x<0)q.x+=1;
+  if(Math.random()<dt*0.6*h)q.y+=(Math.random()-0.5)*0.5;
+  q.y=clamp(q.y,0.04,0.96);
+ });
+}
+function rr(g,x,y,w,hh,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+hh,r);g.arcTo(x+w,y+hh,x,y+hh,r);g.arcTo(x,y+hh,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
+function arrow(g,x1,y1,x2,y2,col,lw,hd){hd=hd||8;g.strokeStyle=col;g.fillStyle=col;g.lineWidth=lw||2;g.beginPath();g.moveTo(x1,y1);g.lineTo(x2,y2);g.stroke();const a=Math.atan2(y2-y1,x2-x1);g.beginPath();g.moveTo(x2,y2);g.lineTo(x2-hd*Math.cos(a-0.4),y2-hd*Math.sin(a-0.4));g.lineTo(x2-hd*Math.cos(a+0.4),y2-hd*Math.sin(a+0.4));g.closePath();g.fill();}
+function text(g,s,x,y,font,col,al){g.font=font;g.fillStyle=col;g.textAlign=al||'left';g.textBaseline='middle';g.fillText(s,x,y);}
+function drawSim(g){
+ const p=curP,c=cur;
+ const Bfrac=Math.abs(S.B)/2,Ifrac=Math.abs(S.I)/100;
+ const active=S.I!==0&&S.B!==0,dirI=Math.sign(S.I);
+ const defl=(Math.sign(S.I)*Math.sign(S.B)>0)?1:-1;
+ const cdir=dirI*(p.sign>0?1:-1);
+ const bw=300+(S.L-5)/15*220,bh=80+(S.w-2)/8*130;
+ const bx=150,cy=H/2+6,by=cy-bh/2;
+ const depth=6+12*S.t,dx=depth,dy=-depth*0.6;
+ g.setTransform(sx,0,0,sx,0,0);
+ g.fillStyle='#fbfcff';g.fillRect(0,0,W,H);
+ // B-field symbols
+ if(S.B!==0){
+  const sp=lerp(84,44,Bfrac),a=0.12+0.22*Bfrac;
+  g.strokeStyle='rgba(30,90,200,'+a+')';g.fillStyle='rgba(30,90,200,'+a+')';g.lineWidth=1.3;
+  for(let y=sp/2;y<H;y+=sp)for(let x=sp/2;x<W;x+=sp){
+   g.beginPath();g.arc(x,y,7,0,6.283);g.stroke();
+   if(S.B>0){g.beginPath();g.arc(x,y,2.2,0,6.283);g.fill();}
+   else{g.beginPath();g.moveTo(x-3.5,y-3.5);g.lineTo(x+3.5,y+3.5);g.moveTo(x+3.5,y-3.5);g.lineTo(x-3.5,y+3.5);g.stroke();}
+  }
+ }
+ // 3D faces (thickness)
+ g.fillStyle='rgba(0,0,0,0.22)';
+ g.beginPath();g.moveTo(bx+bw,by);g.lineTo(bx+bw+dx,by+dy);g.lineTo(bx+bw+dx,by+bh+dy);g.lineTo(bx+bw,by+bh);g.closePath();g.fillStyle=p.body;g.fill();g.strokeStyle='#556';g.lineWidth=1;g.stroke();
+ g.beginPath();g.moveTo(bx,by);g.lineTo(bx+dx,by+dy);g.lineTo(bx+bw+dx,by+dy);g.lineTo(bx+bw,by);g.closePath();g.fillStyle=p.body;g.fill();g.stroke();
+ g.fillStyle='rgba(0,0,0,0.12)';
+ g.beginPath();g.moveTo(bx+bw,by);g.lineTo(bx+bw+dx,by+dy);g.lineTo(bx+bw+dx,by+bh+dy);g.lineTo(bx+bw,by+bh);g.closePath();g.fill();
+ // front face
+ const gr=g.createLinearGradient(bx,by,bx,by+bh);gr.addColorStop(0,p.body);gr.addColorStop(1,'rgba(255,255,255,0.9)');
+ g.fillStyle=p.body;g.fillRect(bx,by,bw,bh);g.fillStyle='rgba(255,255,255,0.35)';g.fillRect(bx,by,bw,bh);
+ g.strokeStyle='#445';g.lineWidth=1.4;g.strokeRect(bx,by,bw,bh);
+ // B symbols over bar (light)
+ if(S.B!==0){
+  const sp=lerp(84,44,Bfrac),a=0.18+0.25*Bfrac;
+  g.strokeStyle='rgba(30,90,200,'+a+')';g.fillStyle='rgba(30,90,200,'+a+')';g.lineWidth=1.3;
+  for(let y=sp/2;y<H;y+=sp)for(let x=sp/2;x<W;x+=sp){
+   if(x<bx||x>bx+bw||y<by||y>by+bh)continue;
+   g.beginPath();g.arc(x,y,7,0,6.283);g.stroke();
+   if(S.B>0){g.beginPath();g.arc(x,y,2.2,0,6.283);g.fill();}
+   else{g.beginPath();g.moveTo(x-3.5,y-3.5);g.lineTo(x+3.5,y+3.5);g.moveTo(x+3.5,y-3.5);g.lineTo(x-3.5,y+3.5);g.stroke();}
+  }
+ }
+ // lattice
+ g.fillStyle='rgba(80,90,110,0.32)';
+ for(let y=by+14;y<by+bh-6;y+=26)for(let x=bx+14;x<bx+bw-6;x+=26){g.beginPath();g.arc(x,y,2.2,0,6.283);g.fill();}
+ // contacts
+ g.fillStyle='#8a93a6';g.fillRect(bx-14,by,14,bh);g.fillRect(bx+bw,by,14,bh);
+ // edge charges
+ const mag=clamp((Math.log10(Math.max(Math.abs(c.VH),1e-12))+9)/9,0,1);
+ const K=Math.round(h*(6+12*mag));
+ if(K>0){
+  const carrierPos=p.sign>0;
+  const yDef=defl>0?by+bh-9:by+9,yOpp=defl>0?by+9:by+bh-9;
+  for(let i=0;i<K;i++){
+   const x=K===1?bx+bw/2:bx+16+i*(bw-32)/(K-1);
+   [[yDef,carrierPos],[yOpp,!carrierPos]].forEach(function(q){
+    g.fillStyle=q[1]?'#dc2626':'#2563eb';g.beginPath();g.arc(x,q[0],6,0,6.283);g.fill();
+    g.fillStyle='#fff';g.font='bold 11px system-ui';g.textAlign='center';g.textBaseline='middle';g.fillText(q[1]?'+':'\u2212',x,q[0]+0.5);
+   });
+  }
+ }
+ // carriers
+ const colC=p.sign>0?'#dc2626':'#2563eb';
+ pts.forEach(function(q,i){
+  const x=bx+q.x*bw,y=by+q.y*bh;
+  g.fillStyle=colC;g.beginPath();g.arc(x,y,5.5,0,6.283);g.fill();
+  g.fillStyle='#fff';g.font='bold 10px system-ui';g.textAlign='center';g.textBaseline='middle';g.fillText(p.sign>0?'+':'\u2212',x,y+0.5);
+  if(i===0){g.strokeStyle='#f59e0b';g.lineWidth=2.5;g.beginPath();g.arc(x,y,9,0,6.283);g.stroke();}
+ });
+ // Hall field arrow
+ if(active&&h>0.05){
+  const negBottom=(defl>0)===(p.sign<0);
+  const x=bx+bw*0.93,len=(bh-44)*h,y0=negBottom?by+22:by+bh-22,dir=negBottom?1:-1;
+  arrow(g,x,y0,x,y0+dir*len,'#16a34a',3,9);
+  text(g,'E\u2095',x-8,y0+dir*len/2,'bold 13px system-ui','#166534','right');
+ }
+ // forces on tracer particle
+ if(active){
+  const q=pts[0],x=bx+q.x*bw,y=by+q.y*bh;
+  const fb=14+30*Bfrac;
+  arrow(g,x+12,y,x+12+cdir*32,y,'#111',2,7);text(g,'v',x+12+cdir*40,y-8,'italic 13px system-ui','#111','center');
+  arrow(g,x-9,y,x-9,y+defl*fb,'#dc2626',2.5,8);text(g,'F_B',x-20,y+defl*(fb+10),'bold 12px system-ui','#b91c1c','right');
+  if(h>0.05){arrow(g,x+9,y,x+9,y-defl*fb*h,'#16a34a',2.5,8);text(g,'F_E',x+20,y-defl*(fb*h+10),'bold 12px system-ui','#166534','left');}
+ }
+ // Hall probes, wires, voltmeter
+ const px=bx+bw/2,mx=bx+bw+dx+95;
+ g.fillStyle='#222';g.fillRect(px-5,by-4,10,8);g.fillRect(px-5,by+bh-4,10,8);
+ g.strokeStyle='#333';g.lineWidth=1.8;
+ g.beginPath();g.moveTo(px,by-4);g.lineTo(px,by-40);g.lineTo(mx,by-40);g.lineTo(mx,cy-30);g.stroke();
+ g.beginPath();g.moveTo(px,by+bh+4);g.lineTo(px,by+bh+40);g.lineTo(mx,by+bh+40);g.lineTo(mx,cy+30);g.stroke();
+ g.fillStyle='#fff';g.beginPath();g.arc(mx,cy,30,0,6.283);g.fill();g.stroke();
+ text(g,'V',mx,cy,'bold 24px Georgia,serif','#222','center');
+ text(g,'\u2212',mx+14,cy-42,'bold 18px system-ui','#2563eb','center');
+ text(g,'+',mx+14,cy+44,'bold 18px system-ui','#dc2626','center');
+ const dv=h*c.VH;
+ rr(g,mx+42,cy-28,128,56,8);g.fillStyle='#0f172a';g.fill();
+ text(g,'V\u2095 (live)',mx+106,cy-14,'11px system-ui','#9fb3d9','center');
+ text(g,(dv===0?'0':(dv<0?'\u2212':'+')+eng(Math.abs(dv),'V',3)),mx+106,cy+9,'bold 17px ui-monospace,Consolas,monospace','#7CFC9A','center');
+ // current source & circuit
+ const sxL=30,sw=80;
+ g.strokeStyle='#333';g.lineWidth=1.8;g.fillStyle='#fff';rr(g,sxL,cy-34,sw,68,8);g.fill();g.stroke();
+ const posRight=S.I>=0;
+ g.lineWidth=3;g.beginPath();g.moveTo(sxL+34,cy-14);g.lineTo(sxL+34,cy+14);g.stroke();
+ g.beginPath();g.moveTo(sxL+46,cy-8);g.lineTo(sxL+46,cy+8);g.stroke();
+ text(g,'DC',sxL+sw/2,cy-24,'bold 11px system-ui','#333','center');
+ text(g,'+',posRight?sxL+58:sxL+22,cy+2,'bold 14px system-ui','#dc2626','center');
+ g.lineWidth=1.8;
+ g.beginPath();g.moveTo(sxL+sw,cy);g.lineTo(bx-14,cy);g.stroke();
+ const xr=bx+bw+dx+50;
+ g.beginPath();g.moveTo(bx+bw+14,cy);g.lineTo(xr,cy);g.lineTo(xr,H-26);g.lineTo(sxL+sw/2,H-26);g.lineTo(sxL+sw/2,cy+34);g.stroke();
+ if(S.I!==0){
+  const d=dirI;
+  arrow(g,sxL+sw+12+(d<0?30:0),cy-12,sxL+sw+12+(d>0?30:0),cy-12,'#d97706',2.5,8);
+  arrow(g,xr-30+(d<0?20:0),cy-12,xr-30+(d>0?20:0),cy-12,'#d97706',2.5,8);
+  text(g,'I = '+(S.I>0?'':'\u2212')+Math.abs(S.I)+' mA',sxL+sw+14,cy-28,'bold 13px system-ui','#b45309','left');
+ }else text(g,'I = 0',sxL+sw+14,cy-28,'bold 13px system-ui','#888','left');
+ // labels
+ text(g,'L = '+S.L+' mm    w = '+S.w+' mm    t = '+S.t.toFixed(2)+' mm',20,20,'13px system-ui','#334','left');
+ text(g,'B = '+(S.B>0?'+':S.B<0?'\u2212':'')+Math.abs(S.B).toFixed(2)+' T '+(S.B>0?'(out of page \u2299)':S.B<0?'(into page \u2297)':''),20,40,'bold 13px system-ui','#1d4ed8','left');
+ text(g,p.name,W-20,20,'bold 14px system-ui','#16295e','right');
+ text(g,p.sign>0?'Majority carriers: holes (+)':'Majority carriers: electrons (\u2212)',W-20,40,'13px system-ui',p.sign>0?'#b91c1c':'#1d4ed8','right');
+ // legend
+ g.fillStyle='#2563eb';g.beginPath();g.arc(24,H-16,6,0,6.283);g.fill();text(g,'electron',36,H-16,'12px system-ui','#334','left');
+ g.fillStyle='#dc2626';g.beginPath();g.arc(112,H-16,6,0,6.283);g.fill();text(g,'hole',124,H-16,'12px system-ui','#334','left');
+ text(g,'(ring = tracer carrier; speeds are animated, not to real scale)',170,H-16,'12px system-ui','#778','left');
+ text(g,'top edge',bx+bw/2-60,by-12,'11px system-ui','#778','center');
+ text(g,'bottom edge',bx+bw/2-60,by+bh+14,'11px system-ui','#778','center');
+}
+function setStatus(){
+ const active=S.I!==0&&S.B!==0;
+ $('status').textContent=!active?'Set both current I and magnetic field B to non-zero values to see the Hall effect.':(h<0.97?'Charges are piling up on one edge... the Hall field E_H is building up (F_E growing).':'Steady state: E_H has built up so F_E = F_B, net sideways force = 0, carriers move straight and the voltmeter shows V_H.');
+}
+let last=performance.now(),stat=0;
+function frame(now){
+ const dt=Math.min(0.05,(now-last)/1000);last=now;
+ if($('tab-sim').classList.contains('active')){
+  if(!paused)update(dt);
+  drawSim(ctx);
+  stat+=dt;if(stat>0.2){stat=0;setStatus();}
+ }
+ requestAnimationFrame(frame);
+}
+function snap(cap){drawSim(ctx);SHOTS.push({src:cv.toDataURL('image/png'),cap:cap});toast('Screenshot added to report ('+SHOTS.length+')');}
+const SHOTS=[];
+function autoShots(){
+ const sv={mat:S.mat,I:S.I,B:S.B},hs=h;
+ ['cu','sin','sip'].forEach(function(id){
+  S.mat=MATS.findIndex(m=>m.id===id);S.I=sv.I||5;S.B=sv.B||0.5;refresh();
+  pts.forEach(q=>{q.y=0.06+0.88*Math.random();});h=1;
+  drawSim(ctx);
+  SHOTS.push({src:cv.toDataURL('image/png'),cap:'Simulator at steady state: '+curP.name+' (I = '+S.I+' mA, B = '+S.B+' T, t = '+S.t+' mm)'});
+ });
+ S.mat=sv.mat;S.I=sv.I;S.B=sv.B;refresh();h=0;
+ toast('3 screenshots added to report (total '+SHOTS.length+')');
+}
+
+/* ================= charts ================= */
+function niceTicks(min,max,n){
+ const span=(max-min)||1,s0=span/n,mag=Math.pow(10,Math.floor(Math.log10(s0))),nm=s0/mag;
+ const step=(nm<1.5?1:nm<3?2:nm<7?5:10)*mag,start=Math.ceil(min/step-1e-9)*step,out=[];
+ for(let i=0;i<200;i++){const v=start+i*step;if(v>max+step*1e-6)break;out.push(Math.abs(v)<step*1e-9?0:v);}
+ return out;
+}
+const fmtTick=v=>String(Number(v.toPrecision(5)));
+function drawChart(c,cfg,dpr){
+ const Wc=cfg.W||900,Hc=cfg.H||450;c.width=Math.round(Wc*dpr);c.height=Math.round(Hc*dpr);
+ const g=c.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.fillStyle='#fff';g.fillRect(0,0,Wc,Hc);
+ const multi=cfg.series.length>1,m={l:84,r:multi?132:24,t:58,b:58};
+ const pw=Wc-m.l-m.r,ph=Hc-m.t-m.b;
+ let F,pre='',sc=1;
+ if(cfg.symlog){F=v=>Math.sign(v)*Math.log10(1+Math.abs(v)/1e-10);}
+ else{let mx=0;cfg.series.forEach(s=>s.pts.forEach(q=>{mx=Math.max(mx,Math.abs(q[1]));}));let ex=mx>0?Math.floor(Math.log10(mx)/3)*3:0;ex=clamp(ex,-12,3);sc=Math.pow(10,ex);pre=PFX[ex];F=v=>v/sc;}
+ let ymin=0,ymax=0;
+ cfg.series.forEach(s=>s.pts.forEach(q=>{const f=F(q[1]);if(f<ymin)ymin=f;if(f>ymax)ymax=f;}));
+ if(ymax===ymin){ymax=1;ymin=-1;}
+ const pad=(ymax-ymin)*0.08;if(ymin<0)ymin-=pad;if(ymax>0)ymax+=pad;
+ const xmin=cfg.xmin,xmax=cfg.xmax;
+ const X=x=>m.l+(x-xmin)/(xmax-xmin)*pw,Y=f=>m.t+ph-(f-ymin)/(ymax-ymin)*ph;
+ const ticks=[];
+ if(cfg.symlog){ticks.push({f:0,label:'0'});for(let k=-9;k<=3;k+=3)[1,-1].forEach(sg=>{const f=F(sg*Math.pow(10,k));if(f>=ymin-1e-9&&f<=ymax+1e-9)ticks.push({f:f,label:(sg<0?'\u2212':'')+eng(Math.pow(10,k),'V',1)});});}
+ else niceTicks(ymin,ymax,6).forEach(v=>ticks.push({f:v,label:fmtTick(v)}));
+ g.font='12px system-ui,sans-serif';g.textAlign='right';g.textBaseline='middle';
+ ticks.forEach(tk=>{const y=Y(tk.f);g.strokeStyle=tk.f===0?'#7b8498':'#e6eaf2';g.lineWidth=tk.f===0?1.5:1;g.beginPath();g.moveTo(m.l,y);g.lineTo(m.l+pw,y);g.stroke();g.fillStyle='#444';g.fillText(tk.label,m.l-8,y);});
+ g.textAlign='center';g.textBaseline='top';
+ niceTicks(xmin,xmax,8).forEach(v=>{const x=X(v);g.strokeStyle=(v===0&&xmin<0)?'#7b8498':'#eef1f7';g.lineWidth=(v===0&&xmin<0)?1.5:1;g.beginPath();g.moveTo(x,m.t);g.lineTo(x,m.t+ph);g.stroke();g.fillStyle='#444';g.fillText(fmtTick(v),x,m.t+ph+7);});
+ g.strokeStyle='#aab3c5';g.lineWidth=1;g.strokeRect(m.l,m.t,pw,ph);
+ cfg.series.forEach(s=>{g.strokeStyle=s.col;g.lineWidth=2.4;g.setLineDash(s.dash?[7,4]:[]);g.beginPath();s.pts.forEach((q,i)=>{const x=X(q[0]),y=Y(F(q[1]));if(i)g.lineTo(x,y);else g.moveTo(x,y);});g.stroke();g.setLineDash([]);});
+ g.fillStyle='#111';g.textAlign='left';g.textBaseline='middle';g.font='bold 16px system-ui';g.fillText(cfg.title,m.l,20);
+ g.font='12px system-ui';g.fillStyle='#667';g.fillText(cfg.sub||'',m.l,40);
+ g.fillStyle='#222';g.font='13px system-ui';g.textAlign='center';g.fillText(cfg.xlabel,m.l+pw/2,Hc-14);
+ g.save();g.translate(18,m.t+ph/2);g.rotate(-Math.PI/2);g.fillText(cfg.symlog?'Hall voltage V\u2095 (V, symmetric log scale)':'Hall voltage V\u2095 ('+pre+'V)',0,0);g.restore();
+ if(multi){g.textAlign='left';cfg.series.forEach((s,i)=>{const y=m.t+10+i*22,x=Wc-m.r+14;g.strokeStyle=s.col;g.lineWidth=2.4;g.setLineDash(s.dash?[5,3]:[]);g.beginPath();g.moveTo(x,y);g.lineTo(x+24,y);g.stroke();g.setLineDash([]);g.fillStyle='#222';g.font='12px system-ui';g.fillText(s.name,x+30,y);});}
+}
+function drawBars(c,cfg,dpr){
+ const Wc=cfg.W||900,rowH=28,mt=62,mb=44,Hc=mt+mb+rowH*cfg.items.length;
+ c.width=Math.round(Wc*dpr);c.height=Math.round(Hc*dpr);
+ const g=c.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.fillStyle='#fff';g.fillRect(0,0,Wc,Hc);
+ const ml=140,mr=130,pw=Wc-ml-mr;
+ const F=v=>Math.sign(v)*Math.log10(1+Math.abs(v)/cfg.v0);
+ let fmin=0,fmax=0;cfg.items.forEach(i=>{const f=F(i.value);fmin=Math.min(fmin,f);fmax=Math.max(fmax,f);});
+ if(fmax===fmin){fmax=1;fmin=-1;}
+ const pd=(fmax-fmin)*0.06;if(fmin<0)fmin-=pd;if(fmax>0)fmax+=pd;
+ const X=f=>ml+(f-fmin)/(fmax-fmin)*pw,x0=X(0);
+ g.font='12px system-ui';g.textBaseline='top';g.textAlign='center';
+ cfg.tickExps.forEach(k=>[1,-1].forEach(sg=>{const v=sg*Math.pow(10,k),f=F(v);if(f<fmin||f>fmax)return;const x=X(f);g.strokeStyle='#e6eaf2';g.lineWidth=1;g.beginPath();g.moveTo(x,mt-6);g.lineTo(x,Hc-mb+4);g.stroke();g.fillStyle='#444';g.fillText((sg<0?'\u2212':'')+cfg.tickFmt(Math.pow(10,k)),x,Hc-mb+8);}));
+ g.strokeStyle='#7b8498';g.lineWidth=1.6;g.beginPath();g.moveTo(x0,mt-6);g.lineTo(x0,Hc-mb+4);g.stroke();
+ g.textBaseline='middle';
+ cfg.items.forEach((it,i)=>{
+  const y=mt+i*rowH+4,bh=rowH-8,xe=X(F(it.value));
+  g.fillStyle=it.value<0?'#2563eb':'#dc2626';g.fillRect(Math.min(x0,xe),y,Math.abs(xe-x0),bh);
+  g.fillStyle='#222';g.textAlign='right';g.font='13px system-ui';g.fillText(it.label,ml-10,y+bh/2);
+  g.textAlign='left';g.font='12px ui-monospace,Consolas,monospace';g.fillText(cfg.fmt(it.value),Wc-mr+10,y+bh/2);
+ });
+ g.fillStyle='#111';g.textAlign='left';g.font='bold 16px system-ui';g.fillText(cfg.title,16,20);
+ g.font='12px system-ui';g.fillStyle='#667';g.fillText(cfg.sub,16,42);
+ g.fillStyle='#222';g.textAlign='center';g.font='13px system-ui';g.fillText(cfg.xlabel,ml+pw/2,Hc-12);
+}
+function graphCfg(o){
+ const XS={B:{min:-2,max:2,n:81,label:'Magnetic field B (T)',nm:'magnetic field B'},I:{min:-100,max:100,n:81,label:'Current I (mA)',nm:'current I'},t:{min:0.05,max:2,n:80,label:'Specimen thickness t (mm)',nm:'thickness t'}}[o.x];
+ const hI=S.I||10,hB=S.B||1,hT=S.t;
+ let list;
+ if(o.set==='sel')list=[{p:curP,short:curP.name,col:'#2b59c3',dash:curP.sign>0}];
+ else list=ALL.filter(m=>o.set==='all'||(o.set==='metals'&&m.kind==='Metal')||(o.set==='semis'&&m.kind==='Semiconductor')).map(m=>({p:props(m,false),short:m.short,col:m.col,dash:m.sign>0}));
+ const series=list.map(it=>{const a=[];for(let i=0;i<XS.n;i++){const x=XS.min+(XS.max-XS.min)*i/(XS.n-1);const I=o.x==='I'?x:hI,B=o.x==='B'?x:hB,t=o.x==='t'?x:hT;a.push([x,calc(it.p,I,B,t,S.L,S.w).VH]);}return {name:it.short,col:it.col,dash:it.dash,pts:a};});
+ const held=[];if(o.x!=='I')held.push('I = '+hI+' mA');if(o.x!=='B')held.push('B = '+hB+' T');if(o.x!=='t')held.push('t = '+hT+' mm');
+ return {title:'Hall voltage vs '+XS.nm+(o.set==='sel'?' \u2013 '+curP.name:''),sub:'Held constant: '+held.join(', ')+(o.x==='t'?'   (V\u2095 \u221d 1/t)':'')+'   |   dashed = positive carriers',xlabel:XS.label,xmin:XS.min,xmax:XS.max,series:series,symlog:!!o.ylog};
+}
+function renderGraph(){
+ const set=$('gSet').value,yv=$('gY').value;
+ const ylog=yv==='auto'?set!=='sel':yv==='log';
+ drawChart($('graph'),graphCfg({x:$('gX').value,set:set,ylog:ylog}),Math.max(1.5,window.devicePixelRatio||1));
+}
+function allRows(){const I0=S.I||5,B0=S.B||1;return {I0:I0,B0:B0,rows:ALL.map(m=>{const p=props(m,false);return {m:m,p:p,c:calc(p,I0,B0,S.t,S.L,S.w)};})};}
+function barCfgs(rows){
+ return {
+  rh:{title:'Hall coefficient R\u2095 of each material',sub:'blue = negative (electrons), red = positive (holes); symmetric logarithmic scale',xlabel:'R\u2095 (m\u00b3/C)',v0:1e-12,tickExps:[-10,-8,-6,-4,-2],tickFmt:v=>v.toExponential(0).replace('e','\u00d710^'),fmt:v=>(v<0?'\u2212':'+')+Math.abs(v).toExponential(2),items:rows.map(r=>({label:r.m.short,value:r.c.RH}))},
+  vh:{title:'Hall voltage V\u2095 at I = '+allRows().I0+' mA, B = '+allRows().B0+' T, t = '+S.t+' mm',sub:'sign shows polarity of bottom edge; symmetric logarithmic scale',xlabel:'V\u2095 (V)',v0:1e-10,tickExps:[-9,-6,-3,0],tickFmt:v=>eng(v,'V',1),fmt:v=>sgnEng(v,'V',3),items:rows.map(r=>({label:r.m.short,value:r.c.VH}))}
+ };
+}
+function renderCompare(){
+ const a=allRows(),rows=a.rows;
+ let h='<p class="note">Compared at I = '+a.I0+' mA, B = '+a.B0+' T, t = '+S.t+' mm, L = '+S.L+' mm, w = '+S.w+' mm (change them on the Simulator tab).</p><div class="tblwrap"><table class="tbl"><thead><tr><th>Material</th><th>Class</th><th>Carriers</th><th>n (m<sup>-3</sup>)</th><th>\u03bc (m\u00b2/V\u00b7s)</th><th>R<sub>H</sub> (m\u00b3/C)</th><th>V<sub>H</sub></th><th>Bottom edge</th></tr></thead><tbody>';
+ rows.forEach(r=>{h+='<tr><td style="text-align:left">'+r.p.name+'</td><td>'+r.m.kind+'</td><td>'+(r.p.sign>0?'Holes (+)':'Electrons (\u2212)')+'</td><td>'+sciH(r.p.n)+'</td><td>'+sciH(r.p.mu,2)+'</td><td>'+(r.p.sign>0?'+':'\u2212')+sciH(Math.abs(r.c.RH))+'</td><td>'+sgnEng(r.c.VH,'V')+'</td><td>'+(r.c.VH>0?'+':r.c.VH<0?'\u2212':'0')+'</td></tr>';});
+ $('cmpTable').innerHTML=h+'</tbody></table></div>';
+ const cu=rows.find(r=>r.m.id==='cu'),si=rows.find(r=>r.m.id==='sin');
+ $('cmpInsight').innerHTML='Under identical I, B and t, n-type silicon gives about <b>'+sciH(Math.abs(si.c.VH/cu.c.VH),2)+'</b> times the Hall voltage of copper, because V<sub>H</sub> \u221d 1/n and a metal has n \u2248 10<sup>28</sup>\u201310<sup>29</sup> m<sup>-3</sup> against \u2248 10<sup>21</sup> m<sup>-3</sup> in a doped semiconductor. n-type materials and ordinary metals give negative R<sub>H</sub>; p-type materials (and zinc, an anomalous metal) give positive R<sub>H</sub>.';
+ const d=Math.max(1.5,window.devicePixelRatio||1),b=barCfgs(rows);
+ drawBars($('barRH'),b.rh,d);drawBars($('barVH'),b.vh,d);
+}
+
+/* ================= observation table ================= */
+const OBS=[];
+function addObs(p,I,B,t,quiet){
+ if(!I||!B){toast('Set non-zero current and magnetic field first');return false;}
+ const r=calc(p,I,B,t,S.L,S.w);let VH=r.VH;
+ if($('noise').checked)VH*=1+(Math.random()-0.5)*0.02;
+ const RH=VH*(t*1e-3)/(I*1e-3*B),sigma=p.n*E*p.mu;
+ OBS.push({name:p.name,I:I,B:B,t:t,VH:VH,RH:RH,type:RH>0?'p-type (holes)':'n-type (electrons)',nExp:1/(Math.abs(RH)*E),sigma:sigma,muH:Math.abs(RH)*sigma,nTrue:p.n,sign:p.sign});
+ return true;
+}
+function obsTableHTML(){
+ if(!OBS.length)return '';
+ let h='<table class="tbl"><thead><tr><th>S.No</th><th>Material</th><th>I (mA)</th><th>B (T)</th><th>t (mm)</th><th>V<sub>H</sub></th><th>R<sub>H</sub> = V<sub>H</sub>t/(IB)<br>(m\u00b3/C)</th><th>Carrier type</th><th>n = 1/(|R<sub>H</sub>|e)<br>(m<sup>-3</sup>)</th><th>\u03bc<sub>H</sub> = |R<sub>H</sub>|\u03c3<br>(m\u00b2/V\u00b7s)</th></tr></thead><tbody>';
+ OBS.forEach((o,i)=>{h+='<tr><td>'+(i+1)+'</td><td style="text-align:left">'+esc(o.name)+'</td><td>'+o.I+'</td><td>'+o.B+'</td><td>'+o.t+'</td><td>'+sgnEng(o.VH,'V')+'</td><td>'+(o.RH<0?'\u2212':'+')+sciH(Math.abs(o.RH))+'</td><td>'+o.type+'</td><td>'+sciH(o.nExp)+'</td><td>'+sciH(o.muH,2)+'</td></tr>';});
+ return h+'</tbody></table>';
+}
+function renderObs(){$('obsTable').innerHTML=OBS.length?obsTableHTML():'<p class="note">No readings yet. Use "Record current reading", the B sweep, or "Record all materials".</p>';}
+function csv(){
+ let s='S.No,Material,I (mA),B (T),t (mm),V_H (V),R_H (m3/C),Carrier,n (m^-3),mu_H (m2/Vs)\n';
+ OBS.forEach((o,i)=>{s+=[i+1,'"'+o.name+'"',o.I,o.B,o.t,o.VH.toExponential(4),o.RH.toExponential(4),o.type,o.nExp.toExponential(3),o.muH.toExponential(3)].join(',')+'\n';});
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:'text/csv'}));a.download='hall_observations.csv';document.body.appendChild(a);a.click();a.remove();
+}
+
+/* ================= theory text ================= */
+const TXT={
+aim:'<p>To build and use an interactive simulator to study the <b>Hall effect</b> in metals (Cu, Ag, Au, Al, Zn) and in n-type and p-type semiconductors (Si, Ge, InSb, GaAs); to investigate how the Hall voltage V<sub>H</sub> depends on the magnetic field B, the current I, the specimen thickness t and the material properties (carrier concentration n, carrier type); and to compare the <b>sign and magnitude of the Hall coefficient R<sub>H</sub></b> for the different materials.</p>',
+theory:'<p>When a current-carrying conductor or semiconductor is placed in a magnetic field perpendicular to the current, a transverse potential difference appears across the specimen, perpendicular to both I and B. This is the Hall effect (E. H. Hall, 1879).</p>'
++'<p>The moving charge carriers (charge q, drift velocity v<sub>d</sub>) feel the Lorentz force</p><div class="formula">F = q (E + v<sub>d</sub> &times; B)</div>'
++'<p>The magnetic force q v<sub>d</sub> B pushes carriers to one side of the specimen. Charge accumulates on the edges and builds up a transverse <b>Hall field E<sub>H</sub></b> which opposes further sideways motion. In steady state the electric and magnetic forces balance:</p>'
++'<div class="formula">q E<sub>H</sub> = q v<sub>d</sub> B &nbsp;&rArr;&nbsp; E<sub>H</sub> = v<sub>d</sub> B</div>'
++'<p>With current density J = n q v<sub>d</sub> = I / (w t), the Hall voltage across the width w is</p>'
++'<div class="formula">V<sub>H</sub> = E<sub>H</sub> w = I B / (n q t) = R<sub>H</sub> I B / t</div>'
++'<div class="formula">Hall coefficient: &nbsp; R<sub>H</sub> = 1 / (n q) = V<sub>H</sub> t / (I B) &nbsp; &nbsp; (m&sup3;/C)</div>'
++'<ul><li><b>n-type / metals (electrons):</b> q = &minus;e, so R<sub>H</sub> = &minus;1/(n e) &lt; 0.</li><li><b>p-type (holes):</b> q = +e, so R<sub>H</sub> = +1/(p e) &gt; 0.</li><li>Both kinds of carriers are deflected to the <i>same</i> side, but the accumulated charge has opposite sign, so the polarity of V<sub>H</sub> reverses &mdash; this is how the carrier type is identified.</li><li>Carrier concentration: n = 1/(|R<sub>H</sub>| e). Conductivity: &sigma; = n e &mu;. Hall mobility: &mu;<sub>H</sub> = |R<sub>H</sub>| &sigma;. Hall angle: tan&theta;<sub>H</sub> = &mu; B.</li><li><b>Metals</b> have n &asymp; 10<sup>28</sup>&ndash;10<sup>29</sup> m<sup>-3</sup>, so R<sub>H</sub> &asymp; 10<sup>-11</sup> m&sup3;/C and V<sub>H</sub> is only nV&ndash;&micro;V. <b>Doped semiconductors</b> have n &asymp; 10<sup>21</sup>&ndash;10<sup>22</sup> m<sup>-3</sup>, so R<sub>H</sub> is 10<sup>7</sup>&ndash;10<sup>8</sup> times larger and V<sub>H</sub> is mV&ndash;V. That is why Hall sensors are made from semiconductors (InSb, GaAs, Si).</li><li><b>Zinc</b> (and Be, Cd) show a <i>positive</i> R<sub>H</sub> although the carriers are electrons: this anomaly comes from band structure / Fermi-surface shape and is not explained by the free-electron model. Its value is approximate in the simulator.</li><li>Simulator limitations: single-carrier model (R<sub>H</sub> = &plusmn;1/(ne)); no temperature dependence, no mixed (electron + hole) conduction, no scattering-factor correction.</li></ul>',
+apparatus:'<ul><li>Rectangular Hall specimen (length L, width w, thickness t) &mdash; selectable material</li><li>Constant-current source with reversing switch (0 &ndash; &plusmn;100 mA)</li><li>Electromagnet / Helmholtz coils with gaussmeter (0 &ndash; &plusmn;2 T) and field-reversing switch</li><li>Hall probes (contacts on the two side edges) and a digital micro/nano-voltmeter</li><li>Ammeter, screw gauge (thickness), connecting wires</li><li>Material set: Cu, Ag, Au, Al, Zn, n-Si, p-Si, n-Ge, p-Ge, n-InSb, n-GaAs and a user-defined material</li></ul>',
+setup:'<p>The specimen is a thin rectangular slab. The current I flows along its length (x-direction) from the DC source. The magnetic field B is applied perpendicular to the broad face (z-direction, out of or into the page). The Hall probes are attached at the middle of the two side edges and give the Hall voltage V<sub>H</sub> along the width (y-direction). In the simulator the same arrangement is shown as a top view with a voltmeter connected between the bottom (+) and top (&minus;) probes, so the sign shown by the meter is the sign of V<sub>H</sub>.</p>',
+principle:'<ol><li>The source drives current I; electrons drift opposite to I and holes drift along I.</li><li>The magnetic field exerts F = q v<sub>d</sub> &times; B, which is the same direction (&minus;y for I along +x and B along +z) for both kinds of carrier.</li><li>Carriers pile up on that edge: the edge becomes negative for electrons and positive for holes, and the opposite edge carries the opposite uncovered charge.</li><li>The resulting Hall field E<sub>H</sub> exerts a force qE<sub>H</sub> opposite to the magnetic force; it grows until qE<sub>H</sub> = q v<sub>d</sub>B.</li><li>At equilibrium carriers travel straight again and a steady V<sub>H</sub> = E<sub>H</sub>w = IB/(nqt) is measured. Reversing I or B reverses the polarity.</li></ol>'
++'<p><b>How the simulator works:</b> for the selected material it takes n, &mu; and the carrier sign, then computes R<sub>H</sub> = sign/(ne), V<sub>H</sub> = R<sub>H</sub>IB/t, v<sub>d</sub> = I/(newt), E<sub>H</sub>, &sigma; = ne&mu; and R = &rho;L/(wt) from the sliders. The animation shows carriers drifting; the sideways drift is proportional to (1 &minus; h), where h grows from 0 to 1 as the Hall field builds up (time constant about 0.9 s), and the voltmeter shows h&middot;V<sub>H</sub>. Animation speeds are scaled for visibility; the numbers in the panels use the real SI formulas.</p>',
+procedure:'<ol><li>Open the <b>Simulator</b> tab and choose a material (start with n-type silicon).</li><li>Set I, B and t with the sliders; note the Hall voltage after the build-up finishes ("steady state" message).</li><li><b>Effect of B:</b> keep I and t fixed; use "Sweep B" in the Observation tab or record readings for B = 0.2, 0.4 ... 1.0 T. Check that V<sub>H</sub>/B is constant.</li><li><b>Effect of I:</b> keep B and t fixed and record V<sub>H</sub> for several currents; check that V<sub>H</sub> &prop; I.</li><li><b>Effect of thickness:</b> keep I and B fixed and record V<sub>H</sub> for several values of t; check that V<sub>H</sub>t is constant (V<sub>H</sub> &prop; 1/t). Change L and w and note that V<sub>H</sub> does not change.</li><li><b>Material properties:</b> use the concentration multiplier or the custom material to see V<sub>H</sub> &prop; 1/n.</li><li><b>Reversal:</b> press "Reverse I" and "Reverse B" and observe the polarity of the voltmeter and the edge on which charges accumulate.</li><li><b>Comparison:</b> select each metal, n-type and p-type semiconductor, or use "Record all materials" at the same I, B, t. Compare the sign and magnitude of R<sub>H</sub>.</li><li>Calculate R<sub>H</sub> = V<sub>H</sub>t/(IB), n = 1/(|R<sub>H</sub>|e) and &mu;<sub>H</sub> = |R<sub>H</sub>|&sigma; from the table.</li><li>Open the <b>Graphs</b> tab for V<sub>H</sub> vs B, I and t; capture screenshots; then print the <b>Report</b>.</li></ol>'
+};
+const SETUP_SVG='<svg viewBox="0 0 640 250" style="width:100%;max-width:640px;font-family:system-ui" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#b45309"/></marker></defs>'
++'<polygon points="140,70 162,56 482,56 460,70" fill="#dfe6f3" stroke="#334"/><polygon points="460,70 482,56 482,166 460,180" fill="#b9c4dc" stroke="#334"/><rect x="140" y="70" width="320" height="110" fill="#cfd9ee" stroke="#334" stroke-width="1.5"/>'
++'<g fill="none" stroke="#1d4ed8"><circle cx="200" cy="105" r="7"/><circle cx="270" cy="105" r="7"/><circle cx="340" cy="105" r="7"/><circle cx="410" cy="105" r="7"/><circle cx="200" cy="148" r="7"/><circle cx="270" cy="148" r="7"/><circle cx="340" cy="148" r="7"/><circle cx="410" cy="148" r="7"/></g>'
++'<g fill="#1d4ed8"><circle cx="200" cy="105" r="2"/><circle cx="270" cy="105" r="2"/><circle cx="340" cy="105" r="2"/><circle cx="410" cy="105" r="2"/><circle cx="200" cy="148" r="2"/><circle cx="270" cy="148" r="2"/><circle cx="340" cy="148" r="2"/><circle cx="410" cy="148" r="2"/></g>'
++'<line x1="40" y1="125" x2="138" y2="125" stroke="#b45309" stroke-width="3" marker-end="url(#ah)"/><line x1="462" y1="125" x2="540" y2="125" stroke="#b45309" stroke-width="3" marker-end="url(#ah)"/>'
++'<text x="60" y="112" fill="#b45309" font-size="14" font-weight="bold">I</text><text x="495" y="112" fill="#b45309" font-size="14" font-weight="bold">I</text>'
++'<rect x="8" y="105" width="30" height="40" rx="5" fill="#fff" stroke="#333"/><text x="23" y="130" font-size="12" text-anchor="middle">DC</text>'
++'<polyline points="300,70 300,25 580,25 580,95" fill="none" stroke="#333" stroke-width="2"/><polyline points="300,180 300,225 580,225 580,155" fill="none" stroke="#333" stroke-width="2"/>'
++'<circle cx="580" cy="125" r="30" fill="#fff" stroke="#333" stroke-width="2"/><text x="580" y="134" font-size="24" text-anchor="middle" font-family="Georgia,serif">V</text><text x="598" y="85" fill="#2563eb" font-size="16" font-weight="bold">&#8722;</text><text x="598" y="175" fill="#dc2626" font-size="16" font-weight="bold">+</text>'
++'<text x="300" y="18" font-size="12" text-anchor="middle" fill="#555">Hall probe (top edge)</text><text x="300" y="242" font-size="12" text-anchor="middle" fill="#555">Hall probe (bottom edge)</text>'
++'<text x="210" y="196" font-size="13" font-weight="bold">L</text><text x="124" y="95" font-size="13" font-weight="bold">w</text><text x="490" y="118" font-size="13" font-weight="bold">t</text>'
++'<text x="300" y="127" font-size="13" text-anchor="middle" fill="#1d4ed8" font-weight="bold">B (out of page)</text><text x="640" y="125" font-size="11" fill="#555" text-anchor="end"></text></svg>';
+function theoryHTML(){
+ return '<h2>1. Aim</h2>'+TXT.aim+'<h2>2. Theory</h2>'+TXT.theory+'<h2>3. Apparatus</h2>'+TXT.apparatus+'<h2>4. Experimental setup</h2>'+TXT.setup+'<div style="text-align:center">'+SETUP_SVG+'</div><h2>5. Working principle</h2>'+TXT.principle+'<h2>6. Simulation procedure</h2>'+TXT.procedure;
+}
+
+/* ================= report ================= */
+function calcStepsHTML(o){
+ const I=o.I*1e-3,t=o.t*1e-3;
+ return '<p><b>Sample calculation &mdash; '+esc(o.name)+':</b> I = '+o.I+' mA = '+sciH(I)+' A, B = '+o.B+' T, t = '+o.t+' mm = '+sciH(t)+' m, measured V<sub>H</sub> = '+sgnEng(o.VH,'V')+'.</p>'
+ +'<p>R<sub>H</sub> = V<sub>H</sub>&middot;t / (I&middot;B) = ('+sciH(o.VH)+' &times; '+sciH(t)+') / ('+sciH(I)+' &times; '+o.B+') = <b>'+sciH(o.RH)+' m&sup3;/C</b> &rarr; '+(o.RH>0?'positive, so carriers are <b>holes (p-type)</b>':'negative, so carriers are <b>electrons (n-type)</b>')+'.</p>'
+ +'<p>n = 1 / (|R<sub>H</sub>|&middot;e) = 1 / ('+sciH(Math.abs(o.RH))+' &times; 1.602&times;10<sup>-19</sup>) = <b>'+sciH(o.nExp)+' m<sup>-3</sup></b> (value used in the model: '+sciH(o.nTrue)+' m<sup>-3</sup>).</p>'
+ +'<p>&sigma; = n&middot;e&middot;&mu; = '+sciH(o.sigma)+' S/m &nbsp;&rArr;&nbsp; &mu;<sub>H</sub> = |R<sub>H</sub>|&middot;&sigma; = <b>'+sciH(o.muH,2)+' m&sup2;/V&middot;s</b>.</p>';
+}
+function renderReport(){
+ const a=allRows(),rows=a.rows,dpr=1.5;
+ const mk=(fn,cfg)=>{const c=document.createElement('canvas');fn(c,cfg,dpr);return c.toDataURL('image/png');};
+ const b=barCfgs(rows);
+ const figs=[
+  [mk(drawChart,graphCfg({x:'B',set:'sel',ylog:false})),'Fig. 1: V\u2095 vs B for '+curP.name+' (straight line through the origin; sign reverses with B).'],
+  [mk(drawChart,graphCfg({x:'I',set:'sel',ylog:false})),'Fig. 2: V\u2095 vs I for '+curP.name+' (V\u2095 \u221d I).'],
+  [mk(drawChart,graphCfg({x:'t',set:'sel',ylog:false})),'Fig. 3: V\u2095 vs t for '+curP.name+' (V\u2095 \u221d 1/t).'],
+  [mk(drawChart,graphCfg({x:'B',set:'all',ylog:true})),'Fig. 4: V\u2095 vs B for all materials (symmetric log scale). Metals and n-type materials fall below the axis (or on the negative side), p-type above.'],
+  [mk(drawBars,b.rh),'Fig. 5: Comparison of the Hall coefficient R\u2095 (sign and magnitude).'],
+  [mk(drawBars,b.vh),'Fig. 6: Comparison of the Hall voltage at the same I, B and t.']
+ ];
+ let shots=SHOTS.slice();
+ if(!shots.length){drawSim(ctx);shots=[{src:cv.toDataURL('image/png'),cap:'Simulator screenshot: '+curP.name+' (current settings)'}];}
+ const ob=OBS.length?OBS[0]:(function(){const r=calc(curP,S.I||5,S.B||1,S.t,S.L,S.w);const RH=r.RH;return {name:curP.name,I:S.I||5,B:S.B||1,t:S.t,VH:r.VH,RH:RH,type:'',nExp:1/(Math.abs(RH)*E),sigma:r.sigma,muH:r.muH,nTrue:curP.n};})();
+ const sorted=rows.slice().sort((x,y)=>Math.abs(y.c.VH)-Math.abs(x.c.VH));
+ const hi=sorted[0],lo=sorted[sorted.length-1];
+ let res='<div class="tblwrap"><table class="tbl"><thead><tr><th>Material</th><th>Carriers</th><th>n (m<sup>-3</sup>)</th><th>R<sub>H</sub> (m&sup3;/C)</th><th>V<sub>H</sub> at I = '+a.I0+' mA, B = '+a.B0+' T, t = '+S.t+' mm</th><th>Sign of R<sub>H</sub></th></tr></thead><tbody>';
+ rows.forEach(r=>{res+='<tr><td style="text-align:left">'+esc(r.p.name)+'</td><td>'+(r.p.sign>0?'Holes':'Electrons')+'</td><td>'+sciH(r.p.n)+'</td><td>'+(r.p.sign>0?'+':'\u2212')+sciH(Math.abs(r.c.RH))+'</td><td>'+sgnEng(r.c.VH,'V')+'</td><td>'+(r.p.sign>0?'Positive':'Negative')+'</td></tr>';});
+ res+='</tbody></table></div>';
+ const mem=esc($('rMembers').value||'(Group members and enrollment numbers: enter them in the box above and press Refresh)').replace(/\n/g,'<br>');
+ let html='<div class="title"><div>FOET, DSMNRU, Lucknow</div><h1>Study of the Hall Effect in Metals and Semiconductors using an Interactive Simulator</h1><div style="margin-top:8px;font-size:14px">'+mem+'</div></div>'
+ +'<div class="doc">'
+ +'<h2>1. Aim</h2>'+TXT.aim+'<h2>2. Theory</h2>'+TXT.theory+'<h2>3. Apparatus</h2>'+TXT.apparatus
+ +'<h2>4. Experimental Setup</h2>'+TXT.setup+'<div style="text-align:center">'+SETUP_SVG+'</div><p style="text-align:center;font-size:13px">Fig. 0: Experimental arrangement for Hall voltage measurement.</p>'
+ +'<h2>5. Working Principle</h2>'+TXT.principle+'<h2>6. Simulation Procedure</h2>'+TXT.procedure
+ +'<h2>7. Observation Tables</h2>'+(OBS.length?obsTableHTML():'<p><i>No readings have been recorded yet. Use the Observation Table tab, then refresh this report.</i></p>')
+ +'<h2>8. Calculations</h2>'+calcStepsHTML(ob)
+ +'<p>For a given material R<sub>H</sub> and n come out the same for every row of the table (they are independent of I, B and t), while V<sub>H</sub> changes in proportion to I and B and inversely with t.</p>'
+ +'<h2>9. Comparative Graphs</h2>'+figs.map(f=>'<figure><img src="'+f[0]+'" alt=""><figcaption>'+esc(f[1])+'</figcaption></figure>').join('')
+ +'<h2>10. Results</h2>'+res
+ +'<p>Largest Hall voltage: <b>'+esc(hi.p.name)+'</b> ('+sgnEng(hi.c.VH,'V')+'); smallest: <b>'+esc(lo.p.name)+'</b> ('+sgnEng(lo.c.VH,'V')+'); ratio &asymp; '+sciH(Math.abs(hi.c.VH/lo.c.VH),2)+'.</p>'
+ +'<h2>11. Conclusion</h2><ul>'
+ +'<li>The Hall voltage is directly proportional to the current and to the magnetic field and inversely proportional to the specimen thickness: V<sub>H</sub> = IB/(nqt); it does not depend on the length or width of the specimen.</li>'
+ +'<li>The Hall coefficient of metals (Cu, Ag, Au, Al) and n-type semiconductors is <b>negative</b> (electrons); that of p-type semiconductors is <b>positive</b> (holes). Zinc shows an anomalous positive R<sub>H</sub> in spite of being a metal.</li>'
+ +'<li>The magnitude of R<sub>H</sub> is about 10<sup>-11</sup> m&sup3;/C for metals but 10<sup>-4</sup> to 10<sup>-2</sup> m&sup3;/C for doped semiconductors, so semiconductors give a Hall voltage millions of times larger; this makes them suitable for Hall sensors, magnetometers and current sensors.</li>'
+ +'<li>From a Hall measurement one finds the type of carriers, their concentration n = 1/(|R<sub>H</sub>|e) and, together with the conductivity, their mobility &mu;<sub>H</sub> = |R<sub>H</sub>|&sigma;.</li>'
+ +'<li>Limitation: the simulator uses an ideal single-carrier model at a fixed temperature with approximate textbook values for n and &mu;.</li></ul>'
+ +'<h2>12. Screenshots of the Simulator</h2>'+shots.map(s=>'<figure><img src="'+s.src+'" alt=""><figcaption>'+esc(s.cap)+'</figcaption></figure>').join('')
+ +'</div>';
+ $('reportBody').innerHTML=html;
+}
+
+/* ================= tabs & init ================= */
+function showTab(id){
+ document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.id==='tab-'+id));
+ document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));
+ if(id==='sim')resizeSim();
+ if(id==='compare')renderCompare();
+ if(id==='graphs')renderGraph();
+ if(id==='obs')renderObs();
+ if(id==='report')renderReport();
+ window.scrollTo(0,0);
+}
+document.querySelectorAll('#nav button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
+buildControls();
+$('theoryDoc').innerHTML=theoryHTML();
+['gX','gSet','gY'].forEach(i=>$(i).addEventListener('change',renderGraph));
+$('oRec').addEventListener('click',()=>{if(addObs(curP,S.I,S.B,S.t)){renderObs();toast('Reading recorded');}});
+$('oSweep').addEventListener('click',()=>{const I=S.I||5;[0.2,0.4,0.6,0.8,1.0].forEach(bv=>addObs(curP,I,bv,S.t));renderObs();toast('5 readings added');});
+$('oAll').addEventListener('click',()=>{const a=allRows();a.rows.forEach(r=>addObs(r.p,a.I0,a.B0,S.t));renderObs();toast('All materials recorded');});
+$('oUndo').addEventListener('click',()=>{OBS.pop();renderObs();});
+$('oClear').addEventListener('click',()=>{OBS.length=0;renderObs();});
+$('oCsv').addEventListener('click',()=>{if(!OBS.length){toast('Table is empty');return;}csv();});
+$('rRefresh').addEventListener('click',()=>{renderReport();toast('Report refreshed');});
+$('rPrint').addEventListener('click',()=>{renderReport();setTimeout(()=>window.print(),200);});
+$('rClearShots').addEventListener('click',()=>{SHOTS.length=0;renderReport();});
+window.addEventListener('resize',resizeSim);
+refresh();updateLabels();renderReadouts();resizeSim();setStatus();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
